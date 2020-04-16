@@ -1,13 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 	<head>
-		<meta charset=utf-8>
-		<meta name=viewport content="width=device-width,initial-scale=1">
-		<title>page-demo</title>
-		<link href=/static/css/app.30790115300ab27614ce176899523b62.css rel=stylesheet>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="ie=edge">
+		<title>d3测试</title>
+		<script src="https://d3js.org/d3.v5.js"></script>
+		<style type="text/css">
+			.myrect {fill: #42B983;}
+		</style>
 	</head>
 	<body>
-		<div id=app>test</div>
-		<script type=text/javascript src=/static/js/manifest.2ae2e69a05c33dfc65f8.js> </script> <script type=text/javascript
-		 src=/static/js/vendor.4ad267b4786a3ebd3327.js> </script> <script type=text/javascript src=/static/js/app.b22ce679862c47a75225.js>
-		 </script> </body> </html>
+		<svg width=600 height=600></svg>
+	</body>
+	<script type="text/javascript">
+		renderRect2();
+		
+		// 递增阶梯柱状图
+		function renderRect2(){
+			var svg = d3.select('svg'),
+				g = svg.append('g').attr('transform', 'translate(100, 100)')
+			var y = 200;
+			g.selectAll('rect').data([1,2,3,4,5,6])
+				.enter()
+				.append('rect')
+				.attr('y', d=>y-d*30).attr('x', (d,i)=> i * 40)
+				.attr('height', d=>d*30).attr('width', 30).attr('class', 'myrect');
+		}
+		// 横向递减柱状图
+		function renderRect1(){
+			var marge = {
+				top: 60,
+				bottom: 60,
+				left: 60,
+				right: 60
+			} //设置边距
+			var dataset = [250, 210, 170, 130, 90]; //数据（表示矩形的宽度）
+			var svg = d3.select('svg'),
+				g = svg.append('g').attr('transform', `translate(${marge.top}, ${marge.left})`); // translate 设置位置
+			
+			var rectHeight = 30; // 矩形高度
+			g.selectAll('rect').data(dataset).enter().append('rect')
+				.attr('x', 20) // 设置左上点的x
+				.attr('y', (d, i)=> {
+					return i * rectHeight;
+				})
+				.attr('width', d=>d)
+				.attr('height', rectHeight - 5)
+				.attr('class', 'myrect');
+		}
+	</script>
+</html>
