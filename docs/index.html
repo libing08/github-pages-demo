@@ -11,17 +11,24 @@
 		</style>
 	</head>
 	<body>
-		<svg width=600 height=400 style="border: 1px solid;"></svg>
+		<svg width=800 height=400 style="border: 1px solid;"></svg>
 	</body>
 	<script type="text/javascript">
 		renderFullRect();
+		function dateRect(){
+			// 12个月的横坐标；每个月与数字一一对应，对应的数字代表了translate中的x值，相当于间距了
+			var xScale = d3.scaleOrdinal().domain(d3.range(1,13).map(d=>d+'月')).range(d3.range(50,650,50));
+			var g = d3.select('svg').append('g').attr('transform', 'translate(0, 50)').call(d3.axisTop(xScale));
+		}
 		// 完整的柱状图（包含横纵坐标和文字）
 		function renderFullRect(){
 			var svgPadding = 40;
 			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding},${svgPadding})`);
 			var svgHeight = svg.attr('height');
 			var dataset = [10,20,30,23,13,40,27,35,20];
-			// d3.range重点了解, rangeRound
+			// d3.range重点了解, linear.rangeRound - 设置比例尺的输出范围，并四舍五入。
+			// d3.range(start, stop, step) step没有设置，默认是1
+			// v4 .scaleBand 取代了 v3 .scale.ordinal 序数比例尺
 			var xScale = d3.scaleBand().domain(d3.range(dataset.length)).rangeRound([0, svg.attr('width')-svgPadding -svgPadding]);
 			var xAxis = d3.axisBottom(xScale);
 			// range从大到小，对应的值反比例关系，对应y轴上，y越大，其实高度越低
@@ -31,16 +38,34 @@
 			// 创建分组（包含矩形和文字）
 			var gs = g.selectAll('g').data(dataset).enter().append('g');
 			gs.append('rect')
+				// bandwidth 每個分段的寬度  step 相鄰兩個分段之前的距離
+				.attr('width', d=>xScale.step()-rectPadding) //宽度=比例值-间隙 这里用bandwidth也是一样的
+				.attr('class', 'myrect')
 				.attr('x', (d,i)=>xScale(i)+rectPadding/2)
+				.attr('y', (d,i)=>{ var min=yScale.domain()[0]; return yScale(min); }) // 获取y最小值
+				.attr('height',0)
+				// 添加动图效果
+				.transition()
+				.delay(function(d,i){
+					return i * 200;
+				})
+				.duration(2000)
+				.ease(d3.easeBounce)
 				.attr('y', d=>yScale(d))
-				.attr('width', d=>xScale.step()-rectPadding) //宽度=比例值-间隙
 				.attr('height', d=>svgHeight - svgPadding - svgPadding -yScale(d)) // -svgPadding-svgPadding 代表top和bottom，svg的内边距
-				.attr('class', 'myrect');
+				;
 			gs.append('text')
 				.attr('x', (d,i)=>xScale(i))
-				.attr('y', d=>yScale(d))
 				.attr('dx', ()=>(xScale.step()-rectPadding)/2) // 柱状居中
 				.attr('dy',20) // 向下偏移20，距离柱图顶部
+				.attr('y', (d,i)=>{ var min=yScale.domain()[0]; return yScale(min); })
+				.transition()
+				.delay(function(d,i) {
+					return i*200
+				})
+				.duration(2000)
+				.ease(d3.easeCubic)
+				.attr('y', d=>yScale(d))
 				.text(d=>d);
 			// 添加坐标轴	
 			g.append('g').attr('transform', `translate(0, ${svgHeight-svgPadding-svgPadding})`).call(xAxis);
