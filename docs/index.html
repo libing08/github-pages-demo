@@ -11,11 +11,48 @@
 		</style>
 	</head>
 	<body>
-		<svg width=600 height=600></svg>
+		<svg width=600 height=400></svg>
 	</body>
 	<script type="text/javascript">
-		renderRect2();
+		renderRectByScale();
 		
+		// 使用比例尺构建柱状图
+		function renderRectByScale(){
+			var dataset = [1.8, 2.5 , 0.4 , 2.1 , 3.5, 1.7 , 1.3 , 0.9 , 2.8];  
+			//定义一个线性比例尺
+			var scaleLinear = d3.scaleLinear().domain([0,d3.max(dataset)]).range([0,300]);
+			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(30, 30)`);
+			var y = 300;
+			g.selectAll('rect').data(dataset).enter().append('rect')
+				.attr('x', (d,i)=>i*40)
+				.attr('y', d=>y-scaleLinear(d))
+				.attr('width', 30)
+				.attr('height', d=>scaleLinear(d))
+				.attr('class', 'myrect');
+		}
+		
+		// 序数比例尺： domain域和range域是离散的，也就是数组
+		function scaleOrdinalTest1(){
+			var index = [0,1,2,3,4],color = ["red","blue","yellow","black","green"];
+			var scaleOrdinal = d3.scaleOrdinal().domain(index).range(color);
+			
+			document.write("scaleOrdinal(1)输出：" + scaleOrdinal(1));
+			d3.select('body').append('br');
+			document.write("scaleOrdinal(2)输出：" + scaleOrdinal(2));
+			d3.select('body').append('br');
+			document.write("scaleOrdinal(4)输出：" + scaleOrdinal(4));
+		}
+		// 线性比例尺
+		function scaleLinear1(){
+			var ds = [1.2,2.3,0.9,1.5,3.3], min = d3.min(ds), max = d3.max(ds);
+			//[0.9,3.3]映射 [0,300]
+			var scaleLinear = d3.scaleLinear().domain([min, max]).range([0, 300]);
+			document.write("scaleLinear(1)输出：" + scaleLinear(1));
+			d3.select('body').append('br');
+			document.write("scaleLinear(2)输出：" + scaleLinear(2));
+			d3.select('body').append('br');
+			document.write("scaleLinear(3.3)输出：" + scaleLinear(3.3));
+		}
 		// 递增阶梯柱状图
 		function renderRect2(){
 			var svg = d3.select('svg'),
