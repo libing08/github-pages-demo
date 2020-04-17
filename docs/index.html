@@ -5,17 +5,180 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta http-equiv="X-UA-Compatible" content="ie=edge">
 		<title>d3测试</title>
-		<script src="https://d3js.org/d3.v5.js"></script>
+		<script src="d3.js" type="text/javascript" charset="utf-8"></script>
 		<style type="text/css">
 			.myrect,rect {fill: #42B983;}
 			text {fill: #008000; font-weight: bold;}
+			.over{fill: yellowgreen;} .out {fill: #42B983}
 		</style>
 	</head>
 	<body>
 		<svg width=800 height=400 style="border: 1px solid;"></svg>
 	</body>
 	<script type="text/javascript">
-		myFullDateRectDemo();
+		var svgPadding = 30;
+		var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding}, ${svgPadding})`);
+		var innerHeight = svg.attr('height') - svgPadding*2, innerWidth = svg.attr('width')-svgPadding*2;
+		
+		simulationShap();
+			
+		// 力导向图
+		function simulationShap(){
+			//准备数据
+			var nodes = [//节点集
+				{name:"湖南邵阳"},
+				{name:"山东莱州"},
+				{name:"广东阳江"},
+				{name:"山东枣庄"},
+				{name:"泽"},
+				{name:"恒"},
+				{name:"鑫"},
+				{name:"明山"},
+				{name:"班长"}
+			];
+			
+			var edges = [//边集
+				{source:0,target:4,relation:"籍贯",value:1.3},
+				{source:4,target:5,relation:"舍友",value:1},
+				{source:4,target:6,relation:"舍友",value:1},
+				{source:4,target:7,relation:"舍友",value:1},
+				{source:1,target:6,relation:"籍贯",value:2},
+				{source:2,target:5,relation:"籍贯",value:0.9},
+				{source:3,target:7,relation:"籍贯",value:1},
+				{source:5,target:6,relation:"同学",value:1.6},
+				{source:6,target:7,relation:"朋友",value:0.7},
+				{source:6,target:8,relation:"职责",value:2}
+			];
+			// 设置颜色比例尺
+			var colorScale = d3.scaleOrdinal().domain(d3.range(nodes.length)).range(d3.schemeCategory10);		
+			// 新建一个力导向图： 对于d3.forceSimulation().force(name)，也就是当force中只有一个参数，这个参数是某个力的名称，那么这段代码返回的是某个具体的力
+			var forceSimulation = d3.forceSimulation()
+			    		.force("link",d3.forceLink())
+			    		.force("charge",d3.forceManyBody())
+			    		.force("center",d3.forceCenter());
+			//初始化力导向图，也就是传入数据
+			//生成节点数据
+			forceSimulation.nodes(nodes).on("tick",ticked);//这个函数很重要，后面给出具体实现和说明
+			//生成边数据，对edges进行转换
+			forceSimulation.force("link").links(edges).distance(d=>d.value*100) //每一边的长度  	
+			//设置图形的中心位置	
+			forceSimulation.force("center").x(innerWidth/2).y(innerHeight/2);
+			//在浏览器的控制台输出
+			/*
+			   name: "湖南邵阳"
+			   index: 0
+			   x: 432.13862786389143
+			   y: 179.8659092655551
+			   vy: -0.000031943768780717426
+			   vx: -0.0002826834906357848
+			*/
+			console.log(nodes);
+			/* 
+			 source: {name: "湖南邵阳", index: 0, x: 432.13862786389143, y: 179.8659092655551, vy: -0.000031943768780717426, …}
+			 target: {name: "泽", index: 4, x: 300.9356670256005, y: 171.15571616120772, vy: 0.0004293058834733494, …}
+			 relation: "籍贯"
+			 value: 1.3
+			 index: 0
+			 */
+			console.log(edges);
+			
+			//有了节点和边的数据后，我们开始绘制
+			//绘制边 这里注意一下，应该先绘制边，在绘制顶点，因为在d3中，各元素是有层级关系的，先绘制的在下面
+			var links = g.append("g").selectAll("line").data(edges).enter().append("line")
+				.attr("stroke", (d,i)=>colorScale(i))
+				.attr("stroke-width",1);
+			var linksText = g.append("g").selectAll("text").data(edges).enter()
+				.append("text")
+				.text(d=>d.relation);
+			
+			//绘制节点
+			//老规矩，先为节点和节点上的文字分组
+			var gs = g.selectAll(".circleText").data(nodes).enter().append("g")
+				.attr("transform", (d,i) => `translate(${d.x}, ${d.y})`)
+				/* drag中有三个函数，在这里进行了实现，其中d.fx和d.fy表示固定坐标，
+					例如，现在我们看到dragged函数，我们可以发现这样的代码：
+					d.fx = d3.event.x;  d.fy = d3.event.y;，也就是在拖动节点的时候，鼠标位置在哪里（d3.event），节点的固定位置就在哪里，
+					再看到ended函数，也就是结束拖动的时候触发，可以发现，固定坐标都为空，也就是不固定，这样模拟的效果才好（你们也可以试试去掉ended函数会发生什么，这样可以更好的理解）
+				*/
+				.call(d3.drag()
+					.on("start", function(d) {
+						if(!d3.event.active){
+							forceSimulation.alphaTarget(0.8).restart();
+						}
+						d.fx = d.x;
+						d.fy = d.y;
+					})
+					.on("drag", function(d){
+						d.fx = d3.event.x;
+						d.fy = d3.event.y;
+					})
+					.on("end", function(d){
+						if(!d3.event.active){
+							forceSimulation.alphaTarget(0);
+						}
+						d.fx = null;
+						d.fy = null;
+					})
+				);
+				
+			//绘制节点
+			gs.append("circle").attr("r",10).attr("fill",(d,i)=>colorScale(i))
+			//文字
+			gs.append("text").attr("x",-10).attr("y",-20).attr("dy",10).text(d=>d.name)
+			
+			// 因为力导向图是不断运动的，每一时刻都在发生更新，所以需要不断更新节点和连线的位置
+			function ticked(){
+				links
+					.attr("x1", d=>d.source.x).attr("y1",d=>d.source.y)
+					.attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+					
+				linksText
+					.attr("x", d=>(d.source.x+d.target.x)/2)
+					.attr("y", d=>(d.source.y+d.target.y)/2);
+					
+				gs.attr("transform",d=>`translate(${d.x}, ${d.y})`);
+			}
+		}
+		
+		// 饼状图
+		function pieShap(){
+			var dataset = [ 30 , 10 , 43 , 55 , 13 ];//需要将这些数据变成饼状图的数据
+			// 设置颜色比例尺
+			var colorScale = d3.scaleOrdinal().domain(dataset).range(d3.schemeCategory10);
+			//新建一个饼状图
+			var pie = d3.pie();
+			
+			//新建一个弧形生成器
+			var innerRadius = 50;//内半径
+			var outerRadius = 100;//外半径
+			var arc_generator = d3.arc().innerRadius(innerRadius).outerRadius(outerRadius);
+			//将原始数据变成可以绘制饼状图的数据，
+			var pieData = pie(dataset);
+			console.log(pieData);
+			var gs = g.selectAll('g').data(pieData).enter().append('g')
+				.attr('transform', `translate(${innerWidth/2},${innerHeight/2})`);
+			// 绘制扇形
+			gs.append('path').attr('d', d=>arc_generator(d))
+				.attr('fill', (d,i)=> colorScale(d.data)) // 这里的d是pieData，colorScale(d)返回的是不变的值
+			// 添加文字信息
+			gs.append('text').attr('transform', d=>`translate(${arc_generator.centroid(d)})`) // 位置设置在中心处
+				// 水平居中：text-anchor = "middle" 垂直居中：dominant-baseline="middle"
+				.attr('text-anchor', 'middle')
+				.text(d=>d.data);
+		}
+		
+		// 事件交互
+		function demoEventInteraction(){
+			let dataset = d3.range(0,100,10);
+			var scale = d3.scaleBand().domain(dataset).rangeRound([0, innerHeight]);
+			g.selectAll('rect').data(dataset).enter().append('rect')
+				.attr('x', 0).attr('y', (d,i)=>scale.step()*i)
+				.attr('width', (d,i)=>scale(d))
+				.attr('height', ()=>scale.step()-10)
+				.on('mouseover', function(){ d3.select(this).transition().duration(1500).attr('class', 'over')})
+				.on('mouseout', function(){ d3.select(this).transition().duration(1500).attr('class', 'out')})
+				;
+		}
 		
 		// 我的自定义柱状图，动画，横坐标中文，12个月
 		function myFullDateRectDemo(){
