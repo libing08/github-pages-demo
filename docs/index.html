@@ -7,28 +7,127 @@
 		<title>d3测试</title>
 		<script src="https://d3js.org/d3.v5.js"></script>
 		<style type="text/css">
-			.myrect {fill: #42B983;}
+			.myrect,rect {fill: #42B983;}
+			text {fill: #008000; font-weight: bold;}
 		</style>
 	</head>
 	<body>
-		<svg width=600 height=400></svg>
+		<svg width=800 height=400 style="border: 1px solid;"></svg>
 	</body>
 	<script type="text/javascript">
-		renderRectByScale();
+		myFullDateRectDemo();
 		
-		// 使用比例尺构建柱状图
+		// 我的自定义柱状图，动画，横坐标中文，12个月
+		function myFullDateRectDemo(){
+			var dataset = [];
+			for(let i=0; i<12; i++) {
+				dataset[i] = Math.floor(Math.random()*10000)/100;
+			}
+			var svgPadding = 40, rectPadding = 10;
+			// 创建分组，边距40
+			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding}, ${svgPadding})`);
+			var svgWidth = svg.attr('width'), svgHeight = svg.attr('height'), innerSvgHeight = svgHeight - svgPadding*2;
+			
+			// 12个月的横坐标；每个月与数字一一对应，对应的数字代表了translate中的x值，相当于间距了
+			var xScale = d3.scaleBand().domain(d3.range(1,13).map(d=>d+'月')).rangeRound([0, svgWidth - svgPadding*2]);
+			// xScale('1月'); 获取到的是1月的值所对应的range值，这里是0
+			
+			// y轴比例尺
+			var yScale = d3.scaleLinear().domain([0, d3.max(dataset)]).rangeRound([innerSvgHeight,0]);
+			
+			var gs = g.selectAll('g').data(dataset).enter().append('g');
+			
+			gs.append('rect')
+				.attr('x', (d,i)=>xScale.step()*i)
+				.attr('y', innerSvgHeight).attr('height', 0)
+				// 添加动画过渡： d3.easeBounce d3.easeElasticInOut
+				.transition().duration(2000).delay((d,i)=>i*400).ease(d3.easeBounce)
+				.attr('y', (d)=> yScale(d))
+				.attr('width', xScale.step() - rectPadding)
+				.attr('height', (d,i)=>innerSvgHeight - yScale(d));
+			gs.append('text')
+				.attr('x', (d,i)=>xScale.step()*i)
+				.attr('y', 0) // 0 是从上往下落；总高度innerSvgHeight则是从下往上升
+				.transition().duration(2000).delay((d,i)=>i*400).ease(d3.easeBounce)
+				.attr('y', (d)=> yScale(d))
+				.attr('dy', 15)
+				.text(d=>d);
+			// 添加横向坐标轴
+			g.append('g').attr('transform', `translate(${-rectPadding/2}, ${innerSvgHeight})`).call(d3.axisBottom(xScale))
+			// 添加纵坐标
+			g.append('g').call(d3.axisLeft(yScale).ticks(12));
+			// var g = d3.select('svg').append('g').attr('transform', 'translate(0, 50)').call(d3.axisTop(xScale));
+		}
+		// 完整的柱状图（包含横纵坐标和文字），还有动态效果
+		function renderFullRect(){
+			var svgPadding = 40;
+			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding},${svgPadding})`);
+			var svgHeight = svg.attr('height');
+			var dataset = [10,20,30,23,13,40,27,35,20];
+			// d3.range重点了解, linear.rangeRound - 设置比例尺的输出范围，并四舍五入。
+			// d3.range(start, stop, step) step没有设置，默认是1
+			// v4 .scaleBand 取代了 v3 .scale.ordinal 序数比例尺
+			var xScale = d3.scaleBand().domain(d3.range(dataset.length)).rangeRound([0, svg.attr('width')-svgPadding -svgPadding]);
+			var xAxis = d3.axisBottom(xScale);
+			// range从大到小，对应的值反比例关系，对应y轴上，y越大，其实高度越低
+			var yScale = d3.scaleLinear().domain([0,d3.max(dataset)]).range([svgHeight-svgPadding-svgPadding, 0]);
+			var yAxis = d3.axisLeft(yScale);
+			var rectPadding = 20;//矩形之间的间隙
+			// 创建分组（包含矩形和文字）
+			var gs = g.selectAll('g').data(dataset).enter().append('g');
+			gs.append('rect')
+				// bandwidth 每個分段的寬度  step 相鄰兩個分段之前的距離
+				.attr('width', d=>xScale.step()-rectPadding) //宽度=比例值-间隙 这里用bandwidth也是一样的
+				.attr('class', 'myrect')
+				.attr('x', (d,i)=> {console.log(xScale(i)); return xScale(i)+rectPadding/2})
+				.attr('y', (d,i)=>{ var min=yScale.domain()[0]; return yScale(min); }) // 获取y最小值
+				.attr('height',0)
+				// 添加动图效果
+				.transition().delay((d,i)=>i * 200).duration(2000).ease(d3.easeBounce)
+				.attr('y', d=>yScale(d))
+				.attr('height', d=>svgHeight - svgPadding - svgPadding -yScale(d)) // -svgPadding-svgPadding 代表top和bottom，svg的内边距
+				;
+			gs.append('text')
+				.attr('x', (d,i)=>xScale(i))
+				.attr('dx', ()=>(xScale.step()-rectPadding)/2) // 柱状居中
+				.attr('dy',20) // 向下偏移20，距离柱图顶部
+				.attr('y', (d,i)=>{ var min=yScale.domain()[0]; return yScale(min); })
+				.transition()
+				.delay(function(d,i) {
+					return i*200
+				})
+				.duration(2000)
+				.ease(d3.easeCubic)
+				.attr('y', d=>yScale(d))
+				.text(d=>d);
+			// 添加坐标轴	
+			g.append('g').attr('transform', `translate(0, ${svgHeight-svgPadding-svgPadding})`).call(xAxis);
+			g.append('g').call(yAxis);
+			
+		}
+		// 使用比例尺和坐标轴构建柱状图
 		function renderRectByScale(){
 			var dataset = [1.8, 2.5 , 0.4 , 2.1 , 3.5, 1.7 , 1.3 , 0.9 , 2.8];  
+			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(50, 30) `);
+			var y = 300;
+			
 			//定义一个线性比例尺
 			var scaleLinear = d3.scaleLinear().domain([0,d3.max(dataset)]).range([0,300]);
-			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(30, 30)`);
-			var y = 300;
+			
 			g.selectAll('rect').data(dataset).enter().append('rect')
 				.attr('x', (d,i)=>i*40)
-				.attr('y', d=>y-scaleLinear(d))
+				.attr('y', d=>y-scaleLinear(d)) 
 				.attr('width', 30)
 				.attr('height', d=>scaleLinear(d))
 				.attr('class', 'myrect');
+				
+			// 定义一个坐标轴
+			// var xAxis = d3.axisTop(scaleLinear) // 定义axis top表示向上
+			// 				.ticks(dataset.length*2); // 设置刻度数目
+			// // 添加坐标轴 （相当于逆时针旋转90度，竖着展示）
+			// g.append('g').attr('transform', `translate(-10, ${y}) rotate(270)`).call(xAxis);
+			var yAxis = d3.axisLeft(d3.scaleLinear().domain([0,d3.max(dataset)]).range([300,0])).ticks(dataset.length*2);
+			g.append('g').attr('transform', 'translate(-10)').call(yAxis)
 		}
 		
 		// 序数比例尺： domain域和range域是离散的，也就是数组
