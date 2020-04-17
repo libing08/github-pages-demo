@@ -7,20 +7,58 @@
 		<title>d3测试</title>
 		<script src="https://d3js.org/d3.v5.js"></script>
 		<style type="text/css">
-			.myrect {fill: #42B983;}
+			.myrect,rect {fill: #42B983;}
+			text {fill: #008000; font-weight: bold;}
 		</style>
 	</head>
 	<body>
 		<svg width=800 height=400 style="border: 1px solid;"></svg>
 	</body>
 	<script type="text/javascript">
-		renderFullRect();
-		function dateRect(){
+		myFullDateRectDemo();
+		
+		// 我的自定义柱状图，动画，横坐标中文，12个月
+		function myFullDateRectDemo(){
+			var dataset = [];
+			for(let i=0; i<12; i++) {
+				dataset[i] = Math.floor(Math.random()*10000)/100;
+			}
+			var svgPadding = 40, rectPadding = 10;
+			// 创建分组，边距40
+			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding}, ${svgPadding})`);
+			var svgWidth = svg.attr('width'), svgHeight = svg.attr('height'), innerSvgHeight = svgHeight - svgPadding*2;
+			
 			// 12个月的横坐标；每个月与数字一一对应，对应的数字代表了translate中的x值，相当于间距了
-			var xScale = d3.scaleOrdinal().domain(d3.range(1,13).map(d=>d+'月')).range(d3.range(50,650,50));
-			var g = d3.select('svg').append('g').attr('transform', 'translate(0, 50)').call(d3.axisTop(xScale));
+			var xScale = d3.scaleBand().domain(d3.range(1,13).map(d=>d+'月')).rangeRound([0, svgWidth - svgPadding*2]);
+			// xScale('1月'); 获取到的是1月的值所对应的range值，这里是0
+			
+			// y轴比例尺
+			var yScale = d3.scaleLinear().domain([0, d3.max(dataset)]).rangeRound([innerSvgHeight,0]);
+			
+			var gs = g.selectAll('g').data(dataset).enter().append('g');
+			
+			gs.append('rect')
+				.attr('x', (d,i)=>xScale.step()*i)
+				.attr('y', innerSvgHeight).attr('height', 0)
+				// 添加动画过渡： d3.easeBounce d3.easeElasticInOut
+				.transition().duration(2000).delay((d,i)=>i*400).ease(d3.easeBounce)
+				.attr('y', (d)=> yScale(d))
+				.attr('width', xScale.step() - rectPadding)
+				.attr('height', (d,i)=>innerSvgHeight - yScale(d));
+			gs.append('text')
+				.attr('x', (d,i)=>xScale.step()*i)
+				.attr('y', 0) // 0 是从上往下落；总高度innerSvgHeight则是从下往上升
+				.transition().duration(2000).delay((d,i)=>i*400).ease(d3.easeBounce)
+				.attr('y', (d)=> yScale(d))
+				.attr('dy', 15)
+				.text(d=>d);
+			// 添加横向坐标轴
+			g.append('g').attr('transform', `translate(${-rectPadding/2}, ${innerSvgHeight})`).call(d3.axisBottom(xScale))
+			// 添加纵坐标
+			g.append('g').call(d3.axisLeft(yScale).ticks(12));
+			// var g = d3.select('svg').append('g').attr('transform', 'translate(0, 50)').call(d3.axisTop(xScale));
 		}
-		// 完整的柱状图（包含横纵坐标和文字）
+		// 完整的柱状图（包含横纵坐标和文字），还有动态效果
 		function renderFullRect(){
 			var svgPadding = 40;
 			var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding},${svgPadding})`);
@@ -41,16 +79,11 @@
 				// bandwidth 每個分段的寬度  step 相鄰兩個分段之前的距離
 				.attr('width', d=>xScale.step()-rectPadding) //宽度=比例值-间隙 这里用bandwidth也是一样的
 				.attr('class', 'myrect')
-				.attr('x', (d,i)=>xScale(i)+rectPadding/2)
+				.attr('x', (d,i)=> {console.log(xScale(i)); return xScale(i)+rectPadding/2})
 				.attr('y', (d,i)=>{ var min=yScale.domain()[0]; return yScale(min); }) // 获取y最小值
 				.attr('height',0)
 				// 添加动图效果
-				.transition()
-				.delay(function(d,i){
-					return i * 200;
-				})
-				.duration(2000)
-				.ease(d3.easeBounce)
+				.transition().delay((d,i)=>i * 200).duration(2000).ease(d3.easeBounce)
 				.attr('y', d=>yScale(d))
 				.attr('height', d=>svgHeight - svgPadding - svgPadding -yScale(d)) // -svgPadding-svgPadding 代表top和bottom，svg的内边距
 				;
