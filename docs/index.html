@@ -13,15 +13,107 @@
 		</style>
 	</head>
 	<body>
-		<svg width=800 height=400 style="border: 1px solid;"></svg>
+		<svg width=960 height=600 style="border: 1px solid;"></svg>
 	</body>
 	<script type="text/javascript">
 		var svgPadding = 30;
 		var svg = d3.select('svg'), g = svg.append('g').attr('transform', `translate(${svgPadding}, ${svgPadding})`);
 		var innerHeight = svg.attr('height') - svgPadding*2, innerWidth = svg.attr('width')-svgPadding*2;
 		
-		simulationShap();
+		treeShap();
 			
+		function treeShap(){
+			/* 
+			 为了绘制一个树状图，我们还是需要以下新的知识点
+			d3.hierarchy()，层级布局，需要和tree生成器一起使用，来得到绘制树所需要的节点数据和边数据
+			d3.hierarchy().sum() ,后序遍历。这里给出官方API的解释，虽然对于绘制一个基本的树状图用不到这个函数
+			d3.tree()，创建一个树状图生成器
+			d3.tree().size()，定义树的大小
+			d3.tree().separation(),定义邻居节点的距离
+			node.descendants()得到所有的节点，已经经过转换的数据
+			node.links()，得到所有的边，已经经过转换的数据
+			d3.linkHorizontal()，创建一个贝塞尔生成曲线生成器，当然不止只有水平的，还有垂直的（d3.linkVertical()），这里给出官方API的示例
+			 */
+			var dataset = {
+				name:"中国",
+				children:[
+					{
+						name:"浙江",
+						children:[
+							{name:"杭州" ,value:100},
+							{name:"宁波",value:100},
+							{name:"温州",value:100},
+							{name:"绍兴",value:100}
+						]
+					},
+					{
+						name:"广西",
+						children:[
+							{
+								name:"桂林",
+								children:[
+									{name:"秀峰区",value:100},
+									{name:"叠彩区",value:100},
+									{name:"象山区",value:100},
+									{name:"七星区",value:100}
+								]
+							},
+							{name:"南宁",value:100},
+							{name:"柳州",value:100},
+							{name:"防城港",value:100}
+						]
+					},
+					{
+						name:"黑龙江",
+						children:[
+							{name:"哈尔滨",value:100},
+							{name:"齐齐哈尔",value:100},
+							{name:"牡丹江",value:100},
+							{name:"大庆",value:100}
+						]
+					},
+					{
+						name:"新疆" , 
+						children:
+						[
+							{name:"乌鲁木齐"},
+							{name:"克拉玛依"},
+							{name:"吐鲁番"},
+							{name:"哈密"}
+						]
+					}
+				]
+			}
+			var hierarchyData = d3.hierarchy(dataset).sum(d=>d.value)
+			console.log("hierarchyData", hierarchyData);
+			// 创建树状图
+			var tree = d3.tree().size([innerWidth-400, innerHeight-400]).separation((a,b)=>(a.parent==b.parent?1:2)/a.depth);
+			// 初始化树状图
+			var treeData = tree(hierarchyData); 
+			console.log('treeData', treeData);
+			let nodes = treeData.descendants(), links = treeData.links();
+			console.log(nodes, links);
+			// 创建一个贝塞尔生成曲线生成器
+			var Bézier_curve_generator = d3.linkHorizontal().x(d=>d.y).y(d=>d.x); // 垂直的不需要转换x和y的位置
+			
+			g = svg.append('g').attr('transform', `translate(100, ${svgPadding})`);
+			// 绘制边
+			g.append('g').selectAll('path').data(links).enter().append('path')
+				.attr('d', d=> {
+					let start = {x:d.source.x, y: d.source.y};
+					let end = {x:d.target.x, y: d.target.y};
+					return Bézier_curve_generator({source: start, target: end})
+				})
+				.attr('fill', 'none').attr('stroke', 'yellow').attr('stroke-width', 1);
+			// 绘制节点和文字
+			var gs = g.append('g').selectAll('g').data(nodes).enter().append('g')	
+				.attr('transform', d=>`translate(${d.y}, ${d.x})`) // 这里注意x和y颠倒的
+				
+			gs.append('circle').attr('r',6).attr('fill', 'white').attr('stroke', 'blue').attr('stroke-width', 1);
+			gs.append('text').attr('x',d=>d.children?-40:8) // 如果某节点有子节点，则对应的文字前移
+				.attr('y', -5).attr('dy', 10)
+				.text(d=>d.data.name);
+		}
 		// 力导向图
 		function simulationShap(){
 			//准备数据
