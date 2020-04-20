@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>d3雷达图</title>
+		<script src="d3.js" type="text/javascript" charset="utf-8"></script>
+		<style type="text/css">
+			text {color: #008000;}
+		</style>
+	</head>
+	<body>
+		<svg width=800 height=600><g></g></svg>
+		<script type="text/javascript">
+			var svgPadding = 30;
+			var svg = d3.select('svg'), g = svg.select('g').attr('transform', `translate(${svgPadding},${svgPadding})`);
+			var svgHeight = svg.attr('height'), svgWidth = svg.attr('width'), 
+				svgWC = (svgWidth-2*svgPadding)/2,
+				svgHC = (svgHeight-2*svgPadding)/2;
+			
+			drawCircles();
+			
+			function drawCircles() {
+				let data = d3.range(60,110,10);
+				let colorScale = d3.scaleOrdinal().domain(d3.range(0, d3.max(data))).range(d3.schemeCategory10);
+				g.selectAll('circle').data(data).enter().append('circle')
+					.attr('r', (d,i)=>200-i*30)
+					.attr('fill', '#F5F5F5').attr('stroke', 'black').attr('stroke-width', 1)
+					.attr('transform', `translate(${svgWC},${svgHC})`)
+					;
+			}
+		</script>
+	</body>
+</html>
